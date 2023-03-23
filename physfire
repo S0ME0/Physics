@@ -1,0 +1,65 @@
+public class FireBlock extends Block {
+    private static final int MAX_PARTICLES = 10;  // Maximum number of fire particles.
+    private static final int PARTICLE_DURATION = 100;  // Duration of each fire particle (in ticks).
+    private static final float PARTICLE_SPEED = 0.05f;  // Speed of the fire particles.
+    private static final float PARTICLE_SIZE = 0.2f;  // Size of the fire particles.
+
+    private static final ParticleType<DefaultParticleEffect> FIRE_PARTICLE_TYPE =
+        ParticleTypes.FLAME;  // Type of fire particle to use.
+
+    private int particleCounter = 0;  // Counter for tracking the number of fire particles.
+
+    public FireBlock(Settings settings) {
+        super(settings);
+    }
+
+    @Override
+    public void randomTick(BlockState state, World world, BlockPos pos, Random random) {
+        if (!world.isClient) {
+            if (random.nextInt(10) == 0) {  // Randomly generate fire particles every 10 ticks.
+                spawnFireParticles(world, pos);
+            }
+        }
+    }
+
+    private void spawnFireParticles(World world, BlockPos pos) {
+        if (particleCounter >= MAX_PARTICLES) {
+            return;  // Maximum number of fire particles reached.
+        }
+
+        world.spawnParticles(
+            FIRE_PARTICLE_TYPE,
+            pos.getX() + 0.5,
+            pos.getY() + 1.0,
+            pos.getZ() + 0.5,
+            1,
+            0.0,
+            0.0,
+            0.0,
+            PARTICLE_SPEED
+        );
+
+        particleCounter++;
+        world.getBlockTickScheduler().schedule(pos, this, PARTICLE_DURATION);  // Schedule next particle generation.
+    }
+
+    @Override
+    public void onStateReplaced(BlockState state, World world, BlockPos pos, BlockState newState, boolean moved) {
+        // Reset the particle counter when the block is destroyed.
+        particleCounter = 0;
+    }
+
+    @Override
+    public void onEntityCollision(BlockState state, World world, BlockPos pos, Entity entity) {
+        // Damage entities that collide with the fire block.
+        if (entity instanceof LivingEntity) {
+            entity.damage(DamageSource.ON_FIRE, 1.0f);
+        }
+    }
+
+    @Override
+    public VoxelShape getCollisionShape(BlockState state, BlockView world, BlockPos pos, ShapeContext context) {
+        // Make the fire block non-solid to allow entities to pass through it.
+        return VoxelShapes.empty();
+    }
+}
