@@ -1,0 +1,60 @@
+// Water properties
+    private final float density = 1000f;
+    private final float viscosity = 0.8f;
+    private final float surfaceTension = 0.05f;
+    private final float dragCoefficient = 0.2f;
+    private final float flowSpeed = 0.1f;
+    private final Vector3d flowDirection = new Vector3d(1, 0, 1).normalize();
+
+    // Lava properties
+    private final float lavaDensity = 3100f;
+    private final float lavaViscosity = 50f;
+    private final float lavaSurfaceTension = 0.5f;
+    private final float lavaDragCoefficient = 0.5f;
+    private final float lavaFlowSpeed = 0.5f;
+    private final Vector3d lavaFlowDirection = new Vector3d(-1, 0, -1).normalize();
+
+    public RealisticWaterBlock(Settings settings) {
+        super(settings);
+    }
+
+    @Override
+    public void onEntityCollision(BlockState state, World world, BlockPos pos, Entity entity) {
+        if (entity instanceof LivingEntity) {
+            // Check if entity is in lava
+            BlockState lavaState = world.getBlockState(pos.down());
+            if (lavaState.getBlock() == Blocks.LAVA) {
+                // Apply buoyancy force for lava
+                Vector3d force = new Vector3d(0, lavaDensity * 9.81, 0);
+                entity.addVelocity(force.x, force.y, force.z);
+
+                // Apply drag force for lava
+                Vector3d velocity = entity.getVelocity();
+                double speed = velocity.length();
+                Vector3d drag = velocity.normalize().multiply(-lavaDragCoefficient * lavaDensity * speed * speed);
+                entity.addVelocity(drag.x, drag.y, drag.z);
+
+                // Apply surface tension for lava
+                Vector3d normal = new Vector3d(0, 1, 0);
+                Vector3d surfaceVelocity = velocity.subtract(normal.multiply(velocity.dotProduct(normal)));
+                Vector3d surfaceForce = surfaceVelocity.multiply(-lavaSurfaceTension);
+                entity.addVelocity(surfaceForce.x, surfaceForce.y, surfaceForce.z);
+
+                // Apply viscosity for lava
+                double area = 1.0;
+                Vector3d shearForce = velocity.multiply(-lavaViscosity * area * speed);
+                entity.addVelocity(shearForce.x, shearForce.y, shearForce.z);
+
+                // Apply lava flow
+                Vector3d blockPosition = new Vector3d(pos.getX() + 0.5, pos.getY() + 0.5, pos.getZ() + 0.5);
+                Vector3d entityPosition = entity.getPositionVec();
+                Vector3d offset = entityPosition.subtract(blockPosition);
+                Vector3d flowVelocity = lavaFlowDirection.multiply(offset.dotProduct(lavaFlowDirection)).multiply(lavaFlowSpeed);
+                entity.addVelocity(flowVelocity.x, flowVelocity.y, flowVelocity.z);
+
+                // Add particle effects for lava splashes and bubbles
+                world.addParticle(ParticleTypes.LAVA, entity.getPosX(), entity.getPosY(), entity.getPosZ(), velocity.x, velocity.y, velocity.z);
+                world.addParticle(ParticleTypes.SMOKE, entity.getPosX(), entity.getPosY(), entity.getPosZ(), velocity.x, velocity.y, velocity.z);
+                world.addParticle(ParticleTypes.FLAME, entity.getPosX(), entity.getPosY(), entity.getPosZ(), velocity.x, velocity.y, velocity.z);
+            } else
+
