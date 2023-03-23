@@ -1,0 +1,65 @@
+public class SmokeBlock extends Block {
+    private static final int MAX_PARTICLES = 10;  // Maximum number of smoke particles.
+    private static final int PARTICLE_DURATION = 100;  // Duration of each smoke particle (in ticks).
+    private static final float PARTICLE_SPEED = 0.05f;  // Speed of the smoke particles.
+    private static final float PARTICLE_SIZE = 0.2f;  // Size of the smoke particles.
+
+    private static final ParticleType<DefaultParticleEffect> SMOKE_PARTICLE_TYPE =
+        ParticleTypes.CLOUD;  // Type of smoke particle to use.
+
+    private int particleCounter = 0;  // Counter for tracking the number of smoke particles.
+
+    public SmokeBlock(Settings settings) {
+        super(settings);
+    }
+
+    @Override
+    public void randomTick(BlockState state, World world, BlockPos pos, Random random) {
+        if (!world.isClient) {
+            if (random.nextInt(10) == 0) {  // Randomly generate smoke particles every 10 ticks.
+                spawnSmokeParticles(world, pos);
+            }
+        }
+    }
+
+    private void spawnSmokeParticles(World world, BlockPos pos) {
+        if (particleCounter >= MAX_PARTICLES) {
+            return;  // Maximum number of smoke particles reached.
+        }
+
+        world.spawnParticles(
+            SMOKE_PARTICLE_TYPE,
+            pos.getX() + 0.5,
+            pos.getY() + 1.0,
+            pos.getZ() + 0.5,
+            1,
+            0.0,
+            0.0,
+            0.0,
+            PARTICLE_SPEED
+        );
+
+        particleCounter++;
+        world.getBlockTickScheduler().schedule(pos, this, PARTICLE_DURATION);  // Schedule next particle generation.
+    }
+
+    @Override
+    public void onStateReplaced(BlockState state, World world, BlockPos pos, BlockState newState, boolean moved) {
+        // Reset the particle counter when the block is destroyed.
+        particleCounter = 0;
+    }
+
+    @Override
+    public void onEntityCollision(BlockState state, World world, BlockPos pos, Entity entity) {
+        // Damage entities that collide with the smoke block.
+        if (entity instanceof LivingEntity) {
+            entity.damage(DamageSource.MAGIC, 1.0f);
+        }
+    }
+
+    @Override
+    public VoxelShape getCollisionShape(BlockState state, BlockView world, BlockPos pos, ShapeContext context) {
+        // Make the smoke block non-solid to allow entities to pass through it.
+        return VoxelShapes.empty();
+    }
+}
