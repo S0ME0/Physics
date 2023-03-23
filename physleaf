@@ -1,0 +1,58 @@
+public class LeafBlock extends Block {
+    private static final int MAX_PARTICLES = 50;  // Maximum number of leaf particles.
+    private static final int PARTICLE_DURATION = 40;  // Duration of each leaf particle (in ticks).
+    private static final float PARTICLE_SPEED = 0.01f;  // Speed of the leaf particles.
+    private static final float PARTICLE_SIZE = 0.2f;  // Size of the leaf particles.
+
+    private static final ParticleType<DefaultParticleEffect> LEAF_PARTICLE_TYPE =
+        ParticleTypes.FALLING_DUST;  // Type of leaf particle to use.
+
+    private int particleCounter = 0;  // Counter for tracking the number of leaf particles.
+
+    public LeafBlock(Settings settings) {
+        super(settings);
+    }
+
+    @Override
+    public void randomTick(BlockState state, World world, BlockPos pos, Random random) {
+        if (!world.isClient) {
+            if (random.nextInt(10) == 0) {  // Randomly generate leaf particles every 10 ticks.
+                spawnLeafParticles(world, pos);
+            }
+        }
+    }
+
+    private void spawnLeafParticles(World world, BlockPos pos) {
+        if (particleCounter >= MAX_PARTICLES) {
+            return;  // Maximum number of leaf particles reached.
+        }
+
+        world.spawnParticles(
+            LEAF_PARTICLE_TYPE,
+            pos.getX() + random.nextFloat(),
+            pos.getY() + 1.0,
+            pos.getZ() + random.nextFloat(),
+            1,
+            0.0,
+            PARTICLE_SPEED,
+            0.0,
+            PARTICLE_SIZE,
+            Block.getStateId(this.getDefaultState())
+        );
+
+        particleCounter++;
+        world.getBlockTickScheduler().schedule(pos, this, PARTICLE_DURATION);  // Schedule next particle generation.
+    }
+
+    @Override
+    public void onStateReplaced(BlockState state, World world, BlockPos pos, BlockState newState, boolean moved) {
+        // Reset the particle counter when the block is destroyed.
+        particleCounter = 0;
+    }
+
+    @Override
+    public VoxelShape getCollisionShape(BlockState state, BlockView world, BlockPos pos, ShapeContext context) {
+        // Make the leaf block non-solid to allow entities to pass through it.
+        return VoxelShapes.empty();
+    }
+}
